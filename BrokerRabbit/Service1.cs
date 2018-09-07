@@ -42,7 +42,7 @@ namespace BrokerRabbit
             
             var client = BusClientFactory.CreateDefault(config);
 
-            client.SubscribeAsync<BasicMessage>(async (msg, context) =>
+            client.SubscribeAsync<TesteMessage>(async (msg, context) =>
             {
                 Console.WriteLine($"Recieved: {msg.Prop}.");
                 
