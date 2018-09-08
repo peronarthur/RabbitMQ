@@ -1,181 +1,156 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
-using Autofac;
+﻿using Autofac.Util;
 using Microsoft.AspNetCore.Mvc;
-using RawRabbit.Configuration;
-using RawRabbit.DependencyInjection.Autofac;
-using RawRabbit.vNext;
-using WebApplication1.Models;
-
-using Base;
-using RabbitMQ.Client;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using RawRabbit.Logging;
-using ILoggerFactory = Microsoft.Extensions.Logging.ILoggerFactory;
-using RawRabbit.vNext.Disposable;
-using RawRabbit.Extensions.Client;
-using System.Linq;
-using System.Threading.Tasks;
 using RabbitMQ.Client;
+using RawRabbit.Attributes;
+using RawRabbit.Configuration;
+using RawRabbit.Configuration.Publish;
 using RawRabbit.Context;
 using RawRabbit.Extensions.BulkGet;
 using RawRabbit.Extensions.Client;
-using RawRabbit.Logging;
 using RawRabbit.vNext;
-
-
+using System;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using WebApplication1.Models;
 
 namespace WebApplication1.Controllers
 {
-    public class TesteMessage
+    public class UpdateMessage
     {
-        public string Prop { get; set; }
-    }
-
-    public class BasicMessage
-    {
-        public string Prop { get; set; }
+        public string Loja { get; set; }
+        public string Versao { get; set; }
     }
 
     public class HomeController : Controller
     {
 
+        public int QuantidadeFilas { get { return 4; } }
+        //public int CountPublicacoes { get; set; }
+        //public int CountLidas { get; set; }
+        //public TaskCompletionSource<int> TotalChamadas { get; set; }
 
-
-        private static Action<IServiceCollection> AddTestConfig(Action<IServiceCollection> action)
-        {
-            action = action ?? (collection => { });
-            action += collection =>
-            {
-                var prevRegged = collection
-                    .LastOrDefault(c => c.ServiceType == typeof(RawRabbitConfiguration))?
-                    .ImplementationFactory(null) as RawRabbitConfiguration;
-                if (prevRegged != null)
-                {
-                    var config = new RawRabbitConfiguration
-                    {
-                        Username = "xxmjbqcj",
-                        Password = "xYFNc0573dICM5qxnMYWmGxo1ey4DEuS",
-                        VirtualHost = "xxmjbqcj",
-                        Hostnames = { "chimpanzee.rmq.cloudamqp.com" }
-                        // more props here.
-                    };
-
-                    collection.AddSingleton<RawRabbitConfiguration>(p => config);
-                }
-            };
-            return action;
-        }
-
-        public static RawRabbit.Extensions.Client.IBusClient CreateExtendable(Action<IServiceCollection> custom = null)
-        {
-            custom = AddTestConfig(custom);
-            return RawRabbitFactory.Create(custom);
-        }
+        /*
+         Passos:
+         0 - Colocar as filas para ouvirem as mensagens;
+         1 - Salvar no banco a ordem;
+         2 - Mandar atualizar;
+         3 - Disparar mensagem para uma fila;
+         4 - Consumir a ação de uma fila;
+         5 - Verificar nos pontos de paradas da atualização se ela precisa parar;
+         6 - Realizar a atualização da loja; */
 
         public IActionResult Index()
         {
-            //var builder = new ContainerBuilder();
-            //builder.RegisterRawRabbit("amqp://xxmjbqcj:xYFNc0573dICM5qxnMYWmGxo1ey4DEuS@chimpanzee.rmq.cloudamqp.com/xxmjbqcj");
-            //var container = builder.Build();
-
-            var config = new RawRabbitConfiguration
-            {
-                Username = "xxmjbqcj",
-                Password = "xYFNc0573dICM5qxnMYWmGxo1ey4DEuS",
-                VirtualHost = "xxmjbqcj",
-                Hostnames = { "chimpanzee.rmq.cloudamqp.com" }
-                // more props here.
-            };
             //var client = CreateExtendable();
-            var client = BusClientFactory.CreateDefault(config); 
+            var client = BusClientFactory.CreateDefault(RetornaConfiguracaoDasFilas());
 
-            
-            //var bulk = client.GetMessages(cfg => cfg
-            //    .ForMessage<BasicMessage>(msg => msg
-            //        .FromQueues("basicmessage_webapplication1".ToLower()))
-            //    .ForMessage<TesteMessage>(msg => msg
-            //        .FromQueues("testemessage_webapplication1")
-            //        .GetAll()
-            //        .WithNoAck()
-            //    ));
 
-            //var a = bulk.GetMessages<BasicMessage>().ToList();
-                        
-            client.PublishAsync(new TesteMessage { Prop = "Hello, world!" });
-            client.PublishAsync(new BasicMessage { Prop = "Hello, world!" });
-            //client.PublishAsync(new Base.TesteMessage { Prop = "Hello, world!" }, Guid.NewGuid(), t => t.WithRoutingKey("basicmessage_webapplication1"));
-            //var client = BusClientFactory.CreateDefault();
-            //client.SubscribeAsync<TesteMessage>(async (msg, context) =>
-            //{
-            //    Console.WriteLine($"Recieved: {msg.Prop}.");
+            var msg = new UpdateMessage { Loja = "homologacao", Versao = "3.103.00.00" };
 
-            //});
+            //CountPublicacoes = 1;
+
+
+            client.PublishAsync(msg);
 
 
             return View();
         }
 
-        public IActionResult About()
+        private RawRabbitConfiguration RetornaConfiguracaoDasFilas()
         {
-            var config = new RawRabbitConfiguration
+            return new RawRabbitConfiguration
             {
                 Username = "xxmjbqcj",
                 Password = "xYFNc0573dICM5qxnMYWmGxo1ey4DEuS",
                 VirtualHost = "xxmjbqcj",
                 Hostnames = { "chimpanzee.rmq.cloudamqp.com" },
-                // more props here.
             };
-            var client = BusClientFactory.CreateDefault(config);
+        }
 
-            //var client = CreateExtendable();
-
-            //var bulk = client.GetMessages(cfg => cfg
-            //    .ForMessage<BasicMessage>(msg => msg
-            //        .FromQueues("basicmessage_webapplication1".ToLower()))
-            //    .ForMessage<TesteMessage>(msg => msg
-            //        .FromQueues("testemessage_webapplication1")
-            //        .GetAll()
-            //        .WithNoAck()
-            //    ));
-
-
-            Action action = () => client.SubscribeAsync<BasicMessage>(async (msg, context) =>
+        private Action<IServiceCollection> AddTestConfig(Action<IServiceCollection> action)
+        {
+            action = action ?? (collection => { });
+            action += collection =>
             {
-                //var a = bulk.GetMessages<BasicMessage>().ToList();
+                var prevRegged = RetornaConfiguracaoDasFilas();
+                if (prevRegged != null)
+                {
+                    collection.AddSingleton<RawRabbitConfiguration>(p => prevRegged);
+                }
 
-                ViewData["Message"] += $"mensagem : {msg.Prop}.";
+            };
+            return action;
+        }
 
+        public RawRabbit.Extensions.Disposable.IBusClient CreateExtendable(Action<IServiceCollection> custom = null)
+        {
+            custom = AddTestConfig(custom);
+            return RawRabbitFactory.Create(custom);
+        }
+        
+        private void CriarFilasESubescrever(int numeroFila)
+        {
+            Func<UpdateMessage, MessageContext, Task> subscribeMethod = async (msg, context) =>
+            {
+                //CountLidas++;
+                //if (CountLidas == CountPublicacoes)
+                //{
+                //    TotalChamadas.SetResult(CountPublicacoes);
+                //}
+                Console.WriteLine($"Atualizando loja {msg.Loja} para versão => {msg.Versao}.");
+                teste();
+            };
 
-                Console.WriteLine($"asdfasdfasdfasdf: {msg.Prop}.");
-                teste(msg.Prop);
-            }, conf => conf.WithQueue(q => q.WithName("basicmessage")));
+            //Action action = () =>
+            //{
+            //    var client = CreateExtendable();
+            //    var bulk = client.GetMessages(cfg => cfg
+            //            .ForMessage<UpdateMessage>(msg => msg
+            //                .FromQueues($"UpdateMessage_{numeroFila}")
+            //                .GetAll()));
+
+            //    foreach (var item in bulk.GetMessages<UpdateMessage>().ToList())
+            //    {
+            //        teste(item.Message.Loja);
+            //    }                
+            //};
+
+            Action action = () => BusClientFactory.CreateDefault(null, AddTestConfig(null))
+                                              .SubscribeAsync(subscribeMethod, conf => conf.WithQueue(q => q.WithName($"UpdateMessage_{numeroFila}"))
+                                                                                           .WithPrefetchCount(1));
 
             Task.Factory.StartNew(() =>
             {
                 action();
             });
+        }
 
-            client.SubscribeAsync<TesteMessage>(async (msg, context) =>
+
+        private void teste()
+        {
+            Thread.Sleep(5000);
+            Console.WriteLine("Iniciando atualização da loja");
+        }
+
+        private void teste(string nomeLoja)
+        {
+            Thread.Sleep(5000);
+            Console.WriteLine($"Iniciando atualização da {nomeLoja}");
+        }
+
+        public IActionResult About()
+        {
+            for (int i = 1; i <= QuantidadeFilas; i++)
             {
-                ViewData["Message"] = $"Rec23wfasdfasdfieved: {msg.Prop}.";
-            }, conf => conf.WithQueue(q => q.WithName("testemessage")));
+                CriarFilasESubescrever(i);
+            }
 
             return View();
         }
-
-        private void teste(string s)
-        {
-            for (int i = 0; i < 10000; i++)
-            {
-                Console.WriteLine($"s: {s}  ------  cont: {i}.");
-            }
-        }
-
+        
         public IActionResult Contact()
         {
             ViewData["Message"] = "Your contact page.";

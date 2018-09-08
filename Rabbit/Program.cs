@@ -7,7 +7,6 @@ namespace Rabbit
         static void Main(string[] args)
         {
             Console.WriteLine("Hello World!");
-            var a = 0;
 
 
         }

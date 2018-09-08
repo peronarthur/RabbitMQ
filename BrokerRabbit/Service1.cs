@@ -11,8 +11,6 @@ using System.Linq;
 using System.ServiceProcess;
 using System.Text;
 using System.Threading.Tasks;
-using Base;
-
 namespace BrokerRabbit
 {
   
@@ -42,12 +40,12 @@ namespace BrokerRabbit
             
             var client = BusClientFactory.CreateDefault(config);
 
-            client.SubscribeAsync<TesteMessage>(async (msg, context) =>
-            {
-                Console.WriteLine($"Recieved: {msg.Prop}.");
+            //client.SubscribeAsync<TesteMessage>(async (msg, context) =>
+            //{
+            //    Console.WriteLine($"Recieved: {msg.Prop}.");
                 
 
-            }, conf => conf.WithQueue(q=> q.WithName("basicmessage_webapplication1")).WithSubscriberId(""));
+            //}, conf => conf.WithQueue(q=> q.WithName("basicmessage_webapplication1")).WithSubscriberId(""));
         }
 
         protected override void OnStop()
